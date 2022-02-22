@@ -21,6 +21,7 @@ class LetterFrequency:
         return dict(weights)
 
 
-test = LetterFrequency()
-print(test.freq_weight())
+if __name__ == "__main__":
+    test = LetterFrequency()
+    print(test.freq_weights())
 

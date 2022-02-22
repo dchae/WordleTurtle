@@ -170,5 +170,6 @@ class WordleSolver:
             current_game = True
 
 
-wordle_turtle = WordleSolver()
-wordle_turtle.execute()
+if __name__ == "__main__":
+    wordle_turtle = WordleSolver()
+    wordle_turtle.execute()
