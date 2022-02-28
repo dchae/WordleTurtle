@@ -1,11 +1,6 @@
-import string
-from letter_frequency_analyser import LetterFrequency
-
-
 class WordleSolver:
     def __init__(self):
-        freq = LetterFrequency()
-        self.freq_weights = freq.freq_weights()
+        pass
 
     def read_wordlist(self, filename):
         wordlist = []
@@ -21,19 +16,10 @@ class WordleSolver:
                 for place in ruled_out:
                     place.add(guess[i])
             elif feedback[i] == 1:
-                for place in range(5):
-                    if not (place == i or found[place]):
-                        potential[place].add(guess[i])
+                for place in [x for x in range(5) if x != i]:
+                    potential[place].add(guess[i])
                 ruled_out[i].add(guess[i])
             elif feedback[i] == 2:
-                potential[i].clear()
-                ruled_out[i].update(
-                    set(
-                        letter
-                        for letter in string.ascii_lowercase
-                        if letter != guess[i]
-                    )
-                )
                 found[i] = guess[i]
 
     def score_solutions(self, wordlist_solutions, ruled_out, potential, found):
@@ -48,10 +34,7 @@ class WordleSolver:
                     wordlist_solutions[word][i] = 2
                 elif letter in potential_letters:
                     wordlist_solutions[word][i] = 1
-                # weight word according to letter frequency in english
-                # freq_weight = self.freq_weights[letter]
-                # wordlist_solutions[word][i] += freq_weight / 2
-            if sum(wordlist_solutions[word]) >= best[1]:
+            if sum(wordlist_solutions[word]) > best[1]:
                 best = (word, sum(wordlist_solutions[word]))
                 print(f"Best solution: {best[0]}, Score: {best[1]}")  # for debugging
         return best
@@ -64,16 +47,13 @@ class WordleSolver:
                 if letter == found[i]:
                     wordlist_guesses[word][i] += -3
                 elif letter in found.values():
-                    wordlist_guesses[word][i] += -1.25
+                    wordlist_guesses[word][i] -= 1
                 if letter in potential[i]:
-                    wordlist_guesses[word][i] += 2
+                    wordlist_guesses[word][i] += 1
                 if letter in ruled_out[i]:
                     wordlist_guesses[word][i] += -10
                 wordlist_guesses[word][i] -= word.count(letter) - 1
-                # weight word according to letter frequency in english
-                freq_weight = self.freq_weights[letter]
-                wordlist_guesses[word][i] += freq_weight
-            if sum(wordlist_guesses[word]) >= best[1]:
+            if sum(wordlist_guesses[word]) > best[1]:
                 best = (word, sum(wordlist_guesses[word]))
                 print(f"Best guess: {best[0]}, Score: {best[1]}")  # for debugging
         return best
@@ -170,6 +150,5 @@ class WordleSolver:
             current_game = True
 
 
-if __name__ == "__main__":
-    wordle_turtle = WordleSolver()
-    wordle_turtle.execute()
+wordle_turtle = WordleSolver()
+wordle_turtle.execute()

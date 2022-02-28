@@ -1,4 +1,5 @@
 import string
+import collections
 from letter_frequency_analyser import LetterFrequency
 
 
@@ -36,48 +37,69 @@ class WordleSolver:
                 for place in ruled_out:
                     place.add(guess[i])
             elif feedback[i] == 1:
-                for place in range(5):
-                    if not (place == i or found[place]):
-                        potential[place].add(guess[i])
+                # if the guess and the answer both contain more than one instance of the letter
+                if sum([feedback[j] for j in range(5) if guess[j] == guess[i]]) > 1:
+                    # add letter to every unfound place besides current one
+                    for place in range(5):
+                        if not (place == i or found[place]):
+                            potential[place].add(guess[i])
+                # add letter to every unfound place besides current one if letter found yet
+                elif guess[i] not in found.values():
+                    for place in range(5):
+                        if not (place == i or found[place]):
+                            potential[place].add(guess[i])
                 ruled_out[i].add(guess[i])
             elif feedback[i] == 2:
+                for place in range(5):
+                    if guess[i] in potential[place]:
+                        potential[place].remove(guess[i])
                 potential[i].clear()
                 found[i] = guess[i]
 
     def score_solutions(self, wordlist_solutions, ruled_out, potential, found):
         best = (None, float("-inf"), 0)
+        bestlist_solutions = []
         potential_letters = set([c for place in potential for c in place])
         for word in wordlist_solutions.keys():
+            if word in ["erode", "drove"]:
+                debugscore = wordlist_solutions[word]
             for i in range(5):
                 letter = word[i]
                 if letter in ruled_out[i]:
-                    wordlist_solutions[word][i] = -1
+                    wordlist_solutions[word][i] = -5
                 if found[i] == letter:
                     wordlist_solutions[word][i] = 2
                 elif letter in potential_letters:
                     wordlist_solutions[word][i] = 1
                 # reduce score by 1 for number of repeated letters
-                wordlist_solutions[word][i] -= word.count(letter) - 1
+                # wordlist_solutions[word][i] -= (word.count(letter) - 1) * 0.25
                 # weight word according to letter frequency in english
                 # freq_weight = self.freq_weights[letter]
                 # wordlist_solutions[word][i] += freq_weight / 2
             score = sum(wordlist_solutions[word])
+            if score > best[1]:
+                bestlist_solutions.clear()
             if score >= best[1]:
                 best = (word, score, score - best[1])
+                bestlist_solutions.append(best)
                 print(
                     f"Best solution: {best[0]}, Score: {best[1]}, Lead: {best[2]}"
                 )  # for debugging
-        return best
+        print("Best List:", bestlist_solutions)
+        return bestlist_solutions
 
     def score_guesses(self, wordlist_guesses, ruled_out, potential, found):
         best = (None, float("-inf"))
         for word in wordlist_guesses.keys():
+            if word in ["forth", "nerol"]:
+                debugscore = wordlist_guesses[word]
             for i in range(5):
                 letter = word[i]
+                wordlist_guesses[word][i] = 0  # reset score every guess
                 if letter == found[i]:
                     wordlist_guesses[word][i] += -3
                 elif letter in found.values():
-                    wordlist_guesses[word][i] += -1.25
+                    wordlist_guesses[word][i] = -1
                 if letter in potential[i]:
                     if letter != found[i]:
                         wordlist_guesses[word][i] += 2
@@ -86,10 +108,55 @@ class WordleSolver:
                 wordlist_guesses[word][i] -= word.count(letter) - 1
                 # weight word according to letter frequency in english
                 freq_weight = self.freq_weights[letter]
-                wordlist_guesses[word][i] += freq_weight
+                wordlist_guesses[word][i] += freq_weight / 2
             if sum(wordlist_guesses[word]) >= best[1]:
                 best = (word, sum(wordlist_guesses[word]))
                 print(f"Best guess: {best[0]}, Score: {best[1]}")  # for debugging
+        return best
+
+    def score_guesses_narrow(
+        self, wordlist_guesses, ruled_out, potential, found, bestlist_solutions
+    ):
+        best = (None, float("-inf"))
+        ruled_out_letters = set([c for place in ruled_out for c in place])
+        ruled_out_letters.update(set(found.values()))
+        bestlist_solutions_letters = [
+            letter
+            for word in bestlist_solutions
+            for letter in word[0]
+            if letter not in ruled_out_letters
+        ]
+        narrowpool = set(
+            [
+                letter
+                for letter in bestlist_solutions_letters
+                if bestlist_solutions_letters.count(letter) < 3
+            ]
+        )
+        for word in wordlist_guesses.keys():
+            for i in range(5):
+                letter = word[i]
+                wordlist_guesses[word][i] = 0  # reset score every guess
+                if letter == found[i]:
+                    wordlist_guesses[word][i] += -1
+                elif letter in found.values():
+                    wordlist_guesses[word][i] += -3
+                if letter in potential[i]:
+                    if letter != found[i]:
+                        wordlist_guesses[word][i] += 2
+                if letter in narrowpool:
+                    wordlist_guesses[word][i] += 4 / word.count(letter)
+                if letter in ruled_out[i]:
+                    wordlist_guesses[word][i] += -10
+                wordlist_guesses[word][i] -= word.count(letter) - 1
+                # weight word according to letter frequency in english
+                freq_weight = self.freq_weights[letter]
+                wordlist_guesses[word][i] += freq_weight / 2
+            if sum(wordlist_guesses[word]) >= best[1]:
+                best = (word, sum(wordlist_guesses[word]))
+                print(
+                    f"Best narrow guess: {best[0]}, Score: {best[1]}"
+                )  # for debugging
         return best
 
     def bestguess(
@@ -107,12 +174,24 @@ class WordleSolver:
         Score each word in wordlist_guesses according to the letters it rules out
         Submit highest scoring guess
         """
-        best = self.score_solutions(wordlist_solutions, ruled_out, potential, found)
-        if guesscount == 5 or (best[1] > 5 and best[2] > 2):
+        bestlist_solutions = self.score_solutions(
+            wordlist_solutions, ruled_out, potential, found
+        )
+        best = bestlist_solutions[0]
+        if guesscount == 5 or (
+            best[1] >= 4 and best[2] >= 2 and len(bestlist_solutions) == 1
+        ):
             # best[1] represents how sure the algorithm is that a solution is correct on scale 0-10
             return best[0]
-        best = self.score_guesses(wordlist_guesses, ruled_out, potential, found)
-        return best[0]
+        elif best[1] >= 5 and 1 < len(bestlist_solutions) < 6:
+            best = self.score_guesses_narrow(
+                wordlist_guesses, ruled_out, potential, found, bestlist_solutions
+            )
+            print("Narrow Guess:")
+            return best[0]
+        else:
+            best = self.score_guesses(wordlist_guesses, ruled_out, potential, found)
+            return best[0]
 
     def help(self):
         print("Commands: help, newgame, win, exit")
