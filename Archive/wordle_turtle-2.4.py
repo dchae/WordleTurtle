@@ -59,10 +59,7 @@ class WordleSolver:
     def score_solutions(self, wordlist_solutions, ruled_out, potential, found):
         best = (None, float("-inf"), 0)
         bestlist_solutions = []
-        # potential_letters = set([c for place in potential for c in place])
         for word in wordlist_solutions.keys():
-            if word in ["erode", "drove"]:
-                debugscore = wordlist_solutions[word]
             for i in range(5):
                 letter = word[i]
                 if letter in ruled_out[i]:
@@ -71,21 +68,12 @@ class WordleSolver:
                     wordlist_solutions[word][i] = 2
                 elif letter in potential[i]:
                     wordlist_solutions[word][i] = 1
-                # reduce score by 1 for number of repeated letters
-                # wordlist_solutions[word][i] -= (word.count(letter) - 1) * 0.25
-                # weight word according to letter frequency in english
-                # freq_weight = self.freq_weights[letter]
-                # wordlist_solutions[word][i] += freq_weight / 2
             score = sum(wordlist_solutions[word])
             if score > best[1]:
                 bestlist_solutions.clear()
             if score >= best[1]:
                 best = (word, score, score - best[1])
                 bestlist_solutions.append(best)
-                print(
-                    f"Best solution: {best[0]}, Score: {best[1]}, Lead: {best[2]}"
-                )  # for debugging
-        print("Best List:", bestlist_solutions)
         return bestlist_solutions
 
     def score_guesses(self, wordlist_guesses, ruled_out, potential, found):
@@ -111,7 +99,6 @@ class WordleSolver:
                 wordlist_guesses[word][i] += freq_weight / 2
             if sum(wordlist_guesses[word]) >= best[1]:
                 best = (word, sum(wordlist_guesses[word]))
-                print(f"Best guess: {best[0]}, Score: {best[1]}")  # for debugging
         return best
 
     def score_guesses_narrow(
@@ -154,9 +141,6 @@ class WordleSolver:
                 wordlist_guesses[word][i] += freq_weight / 2
             if sum(wordlist_guesses[word]) >= best[1]:
                 best = (word, sum(wordlist_guesses[word]))
-                print(
-                    f"Best narrow guess: {best[0]}, Score: {best[1]}"
-                )  # for debugging
         return best
 
     def bestguess(
@@ -250,19 +234,6 @@ class WordleSolver:
                     break
                 guesscount += 1
             current_game = True
-
-    def logger(self):
-        version = input("Version: ")
-        description = input("Description: ")
-        score = self.score()
-        with open("Scores.txt", "a") as f:
-            f.write(f"Version: {version}\nDescription: {description}\n")
-            f.write(f"Average guesses to answer: {score}")
-
-    def test(self):
-        test = wordle_turtle.WordleSolver()
-        for word in self.read_wordlist("wordlist_solutions.txt"):
-            answer = word
 
 
 if __name__ == "__main__":
